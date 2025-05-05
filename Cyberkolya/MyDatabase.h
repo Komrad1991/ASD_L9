@@ -77,42 +77,68 @@ public:
 	};
 	std::vector<Post> top_k_post_by_reposts(int k, int ownerId, int dateBegin, int dateEnd) override
 	{
-		std::vector<Post> ret;
-		std::vector<Post> all_posts;
-		for (const auto& entry : posts[ownerId])
+		std::vector<Post> pre_filterd;
+		for (auto& x : posts[ownerId])
 		{
-			all_posts.push_back(entry.second);
-		}
-		std::priority_queue <Post, std::vector<Post>, repostComp>  sorted_post(all_posts.begin(), all_posts.end());
-		while (ret.size() < k  && !sorted_post.empty())
-		{
-			auto top = sorted_post.top();
-			sorted_post.pop();
-			if (top.Date < dateEnd && top.Date >= dateBegin)
+			if (x.second.Date >= dateBegin && x.second.Date < dateEnd)
 			{
-				ret.push_back(top);
+				pre_filterd.push_back(x.second);
 			}
 		}
+		auto comp = [](Post& p1, Post& p2) -> bool { return p1.Reposts > p2.Reposts; };
+		std::priority_queue<Post, std::vector<Post>, decltype(comp)> min(comp);
+		auto b = pre_filterd.begin();
+		auto e = pre_filterd.end();
+		while (b != e)
+		{
+			if (min.size() < k) min.push(*b);
+			else if ((*b).Reposts > min.top().Reposts)
+			{
+				min.pop();
+				min.push(*b);
+			}
+			++b;
+		}
+		std::vector<Post> ret;
+		while (!min.empty())
+		{
+			ret.push_back(min.top());
+			min.pop();
+		}
+		std::reverse(ret.begin(), ret.end());
 		return ret;
 	}
 	std::vector<Post> top_k_post_by_likes(int k, int ownerId, int dateBegin, int dateEnd) override
 	{
-		std::vector<Post> ret;
-		std::vector<Post> all_posts;
-		for (const auto& entry : posts[ownerId])
+		std::vector<Post> pre_filterd;
+		for (auto& x : posts[ownerId])
 		{
-			all_posts.push_back(entry.second);
-		}
-		std::priority_queue <Post, std::vector<Post>, likesComp>  sorted_post(all_posts.begin(), all_posts.end());
-		while (ret.size() < k && !sorted_post.empty())
-		{
-			auto top = sorted_post.top();
-			sorted_post.pop();
-			if (top.Date < dateEnd && top.Date >= dateBegin)
+			if (x.second.Date >= dateBegin && x.second.Date < dateEnd)
 			{
-				ret.push_back(top);
+				pre_filterd.push_back(x.second);
 			}
 		}
+		auto comp = [](Post& p1, Post& p2) -> bool { return p1.Likes > p2.Likes; };
+		std::priority_queue<Post, std::vector<Post>, decltype(comp)> min(comp);
+		auto b = pre_filterd.begin();
+		auto e = pre_filterd.end();
+		while (b != e)
+		{
+			if (min.size() < k) min.push(*b);
+			else if ((*b).Likes > min.top().Likes)
+			{
+				min.pop();
+				min.push(*b);
+			}
+			++b;
+		}
+		std::vector<Post> ret;
+		while (!min.empty())
+		{
+			ret.push_back(min.top());
+			min.pop();
+		}
+		std::reverse(ret.begin(), ret.end());
 		return ret;
 	}
 
@@ -130,15 +156,13 @@ public:
 		std::vector<UserWithLikes> ret;
 		auto b = posts[ownerId].begin();
 		auto e = posts[ownerId].end();
-		std::map<int, int> UserLikes;
-		while (b != e)
+		std::unordered_map<int, int> UserLikes;
+		for (const auto& x : posts[ownerId])
 		{
-			Post p = (*b).second;
-			if (p.Date >= dateBegin && p.Date < dateEnd)
+			if (x.second.Date >= dateBegin && x.second.Date < dateEnd)
 			{
-				UserLikes[p.FromId] += p.Likes;
+				UserLikes[x.second.FromId] += x.second.Likes;
 			}
-			++b;
 		}
 		std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, authorsLikesComp> sorted(UserLikes.begin(), UserLikes.end());
 		while (ret.size() < k && !sorted.empty())
